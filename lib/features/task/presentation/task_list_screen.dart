@@ -87,12 +87,34 @@ class TaskListScreen extends ConsumerWidget {
                   child: ListTile(
                     title: Text(task.title),
                     subtitle: Text(task.description),
+                    onTap: () async {
+                      final editedTask = await Navigator.of(context).push<Task>(
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              AddEditTaskScreen(task: task, index: index),
+                        ),
+                      );
+                      if (editedTask != null) {
+                        ref
+                            .read(taskListProvider.notifier)
+                            .updateTask(index, editedTask);
+                      }
+                    },
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Checkbox(
                           value: task.isCompleted,
-                          onChanged: (value) {},
+                          onChanged: (value) {
+                            final updatedTask = Task(
+                              title: task.title,
+                              description: task.description,
+                              isCompleted: value ?? false,
+                            );
+                            ref
+                                .read(taskListProvider.notifier)
+                                .updateTask(index, updatedTask);
+                          },
                         ),
                         IconButton(
                           icon: const Icon(Icons.delete),
