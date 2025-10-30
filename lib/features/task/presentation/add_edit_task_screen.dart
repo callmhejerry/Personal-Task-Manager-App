@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:personal_task_manager/features/task/application/add_edit_task_provider.dart';
 import 'package:personal_task_manager/features/task/application/task_provider.dart';
 import 'package:personal_task_manager/models/task.dart';
 
@@ -80,18 +79,25 @@ class _AddEditTaskScreenState extends ConsumerState<AddEditTaskScreen> {
                 );
 
                 try {
-                  await ref
-                      .read(addEditTaskProvider)
-                      .saveTask(task, index: widget.index);
+                  if (widget.index != null) {
+                    // Update existing task
+                    ref
+                        .read(taskStateProvider.notifier)
+                        .updateTask(widget.index!, task);
+                  } else {
+                    // Add new task
+                    ref.read(taskStateProvider.notifier).addTask(task);
+                  }
                   if (context.mounted) {
-                    // Refresh the task list
-                    ref.invalidate(taskListProvider);
-                    Navigator.pop(context);
+                    Navigator.pop(context, task);
                   }
                 } catch (e) {
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Failed to save task')),
+                      const SnackBar(
+                        content: Text('Failed to save task'),
+                        backgroundColor: Colors.red,
+                      ),
                     );
                   }
                 }

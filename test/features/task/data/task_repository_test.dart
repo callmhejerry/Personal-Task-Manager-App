@@ -16,6 +16,7 @@ void main() {
     setUp(() {
       mockTaskBox = MockBox<Task>();
       taskRepository = TaskRepository(mockTaskBox);
+      when(mockTaskBox.length).thenReturn(2);
     });
 
     test('getTasks returns a list of tasks', () {
@@ -40,7 +41,10 @@ void main() {
     });
 
     test('updateTask updates a task in the box', () async {
-      final task = Task(title: 'Updated Task', description: 'Updated Description');
+      final task = Task(
+        title: 'Updated Task',
+        description: 'Updated Description',
+      );
       when(mockTaskBox.putAt(0, task)).thenAnswer((_) async => Future.value());
 
       await taskRepository.updateTask(0, task);

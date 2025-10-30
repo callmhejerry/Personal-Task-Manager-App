@@ -4,11 +4,48 @@ import 'package:personal_task_manager/features/task/application/task_provider.da
 import 'package:personal_task_manager/features/task/presentation/add_edit_task_screen.dart';
 import 'package:personal_task_manager/models/task.dart';
 
-class TaskListScreen extends ConsumerWidget {
+class TaskListScreen extends ConsumerStatefulWidget {
   const TaskListScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TaskListScreen> createState() => _TaskListScreenState();
+}
+
+class _TaskListScreenState extends ConsumerState<TaskListScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Load tasks after widget is mounted
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(taskStateProvider.notifier).loadTasks();
+    });
+  }
+
+  void _showErrorSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  @override
+  void didUpdateWidget(TaskListScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final state = ref.read(taskStateProvider);
+    if (state.error != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _showErrorSnackBar(context, state.error!);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = ref.watch(taskStateProvider);
     final tasks = ref.watch(filteredTasksProvider);
 
     return Scaffold(
@@ -27,7 +64,7 @@ class TaskListScreen extends ConsumerWidget {
                 fillColor: Colors.white,
               ),
               onChanged: (value) =>
-                  ref.read(searchQueryProvider.notifier).state = value,
+                  ref.read(taskStateProvider.notifier).updateSearchQuery(value),
             ),
           ),
         ),
@@ -38,12 +75,36 @@ class TaskListScreen extends ConsumerWidget {
             MaterialPageRoute(builder: (context) => const AddEditTaskScreen()),
           );
           if (newTask != null) {
-            ref.read(taskListProvider.notifier).addTask(newTask);
+            ref.read(taskStateProvider.notifier).addTask(newTask);
           }
         },
         child: const Icon(Icons.add),
       ),
-      body: tasks.isEmpty
+      body: state.isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : state.error != null
+          ? Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    state.error!,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () {
+                      ref.read(taskStateProvider.notifier).loadTasks();
+                    },
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            )
+          : tasks.isEmpty
           ? const Center(child: Text('No tasks yet!'))
           : ListView.builder(
               itemCount: tasks.length,
@@ -82,7 +143,7 @@ class TaskListScreen extends ConsumerWidget {
                     );
                   },
                   onDismissed: (direction) {
-                    ref.read(taskListProvider.notifier).deleteTask(index);
+                    ref.read(taskStateProvider.notifier).deleteTask(index);
                   },
                   child: ListTile(
                     title: Text(task.title),
@@ -96,7 +157,7 @@ class TaskListScreen extends ConsumerWidget {
                       );
                       if (editedTask != null) {
                         ref
-                            .read(taskListProvider.notifier)
+                            .read(taskStateProvider.notifier)
                             .updateTask(index, editedTask);
                       }
                     },
@@ -112,7 +173,7 @@ class TaskListScreen extends ConsumerWidget {
                               isCompleted: value ?? false,
                             );
                             ref
-                                .read(taskListProvider.notifier)
+                                .read(taskStateProvider.notifier)
                                 .updateTask(index, updatedTask);
                           },
                         ),
@@ -145,7 +206,7 @@ class TaskListScreen extends ConsumerWidget {
 
                             if (shouldDelete == true) {
                               ref
-                                  .read(taskListProvider.notifier)
+                                  .read(taskStateProvider.notifier)
                                   .deleteTask(index);
                             }
                           },

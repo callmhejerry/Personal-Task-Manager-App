@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
+import 'package:personal_task_manager/features/task/application/task_state.dart';
 import 'package:personal_task_manager/features/task/data/task_repository.dart';
 import 'package:personal_task_manager/models/task.dart';
 
@@ -8,53 +9,84 @@ final taskRepositoryProvider = Provider<TaskRepository>((ref) {
   return TaskRepository(box);
 });
 
-// Search query provider
-final searchQueryProvider = StateProvider<String>((ref) => '');
-
-// Filtered tasks provider
-final filteredTasksProvider = Provider<List<Task>>((ref) {
-  final tasks = ref.watch(taskListProvider);
-  final searchQuery = ref.watch(searchQueryProvider).toLowerCase();
-
-  if (searchQuery.isEmpty) {
-    return tasks;
-  }
-
-  return tasks.where((task) {
-    return task.title.toLowerCase().contains(searchQuery) ||
-        task.description.toLowerCase().contains(searchQuery);
-  }).toList();
-});
-
-final taskListProvider = StateNotifierProvider<TaskListNotifier, List<Task>>((
+final taskStateProvider = StateNotifierProvider<TaskListNotifier, TaskState>((
   ref,
 ) {
   final repository = ref.watch(taskRepositoryProvider);
   return TaskListNotifier(repository);
 });
 
-class TaskListNotifier extends StateNotifier<List<Task>> {
-  final TaskRepository _repository;
+final filteredTasksProvider = Provider<List<Task>>((ref) {
+  return ref.watch(taskStateProvider).filteredTasks;
+});
 
-  TaskListNotifier(this._repository) : super([]) {
-    state = _repository.getTasks();
+class TaskListNotifier extends StateNotifier<TaskState> {
+  final TaskRepository repository;
+
+  TaskListNotifier(this.repository) : super(const TaskState());
+
+  void loadTasks() {
+    try {
+      state = state.copyWith(isLoading: true);
+      final tasks = repository.getTasks();
+      state = state.copyWith(tasks: tasks, error: null, isLoading: false);
+    } catch (e) {
+      state = state.copyWith(
+        error: e.toString().replaceAll('Exception: ', ''),
+        tasks: [],
+        isLoading: false,
+      );
+    }
   }
 
-  void addTask(Task task) {
-    _repository.addTask(task);
-    state = [...state, task];
+  Future<void> addTask(Task task) async {
+    try {
+      state = state.copyWith(isLoading: true);
+      await repository.addTask(task);
+      state = state.copyWith(
+        tasks: [...state.tasks, task],
+        error: null,
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        error: e.toString().replaceAll('Exception: ', ''),
+        isLoading: false,
+      );
+    }
   }
 
-  void updateTask(int index, Task task) {
-    _repository.updateTask(index, task);
-    state = [
-      for (int i = 0; i < state.length; i++)
-        if (i == index) task else state[i],
-    ];
+  Future<void> updateTask(int index, Task task) async {
+    try {
+      state = state.copyWith(isLoading: true);
+      await repository.updateTask(index, task);
+      final newTasks = List<Task>.from(state.tasks);
+      newTasks[index] = task;
+      state = state.copyWith(tasks: newTasks, error: null, isLoading: false);
+    } catch (e) {
+      state = state.copyWith(
+        error: e.toString().replaceAll('Exception: ', ''),
+        isLoading: false,
+      );
+    }
   }
 
-  void deleteTask(int index) {
-    _repository.deleteTask(index);
-    state = [...state]..removeAt(index);
+  Future<void> deleteTask(int index) async {
+    try {
+      state = state.copyWith(isLoading: true);
+      await repository.deleteTask(index);
+      final newTasks = List<Task>.from(state.tasks);
+      newTasks.removeAt(index);
+      state = state.copyWith(tasks: newTasks, error: null, isLoading: false);
+    } catch (e) {
+      state = state.copyWith(
+        error: e.toString().replaceAll('Exception: ', ''),
+        isLoading: false,
+      );
+    }
+  }
+
+  void updateSearchQuery(String query) {
+    state = state.copyWith(searchQuery: query);
   }
 }

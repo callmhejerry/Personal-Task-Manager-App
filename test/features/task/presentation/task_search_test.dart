@@ -37,19 +37,28 @@ void main() {
     });
 
     testWidgets('filters tasks based on title search', (tester) async {
+      late TaskListNotifier taskNotifier;
       await tester.pumpWidget(
         ProviderScope(
           overrides: [
             taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            taskStateProvider.overrideWith((ref) {
+              taskNotifier = TaskListNotifier(mockTaskRepository);
+              return taskNotifier;
+            }),
           ],
           child: const MaterialApp(home: TaskListScreen()),
         ),
       );
 
+      // Wait for initial state to be ready
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+
       // Initially shows all tasks
-      expect(find.text('Buy groceries'), findsOneWidget);
-      expect(find.text('Call mom'), findsOneWidget);
-      expect(find.text('Clean house'), findsOneWidget);
+      expect(find.text(tasks[0].title), findsOneWidget);
+      expect(find.text(tasks[1].title), findsOneWidget);
+      expect(find.text(tasks[2].title), findsOneWidget);
 
       // Enter search query
       await tester.enterText(find.byType(TextField), 'call');
