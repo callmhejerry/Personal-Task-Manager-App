@@ -151,6 +151,118 @@ void main() {
       verifyNever(mockTaskRepository.deleteTask(0));
     });
 
+    testWidgets('navigates to edit screen when task is tapped', (
+      WidgetTester tester,
+    ) async {
+      final task = Task(title: 'Task 1', description: 'Description 1');
+      when(mockTaskRepository.getTasks()).thenReturn([task]);
+      when(mockTaskRepository.updateTask(0, any)).thenAnswer((_) async {});
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            taskListProvider.overrideWith(
+              (ref) => TaskListNotifier(ref.read(taskRepositoryProvider)),
+            ),
+          ],
+          child: const MaterialApp(home: TaskListScreen()),
+        ),
+      );
+
+      await tester.tap(find.text('Task 1'));
+      await tester.pumpAndSettle();
+
+      // Verify that we're on the edit screen
+      expect(find.text('Edit Task'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Title'), findsOneWidget);
+      expect(find.widgetWithText(TextField, 'Description'), findsOneWidget);
+
+      // Verify pre-filled values
+      final titleField = tester.widget<TextField>(
+        find.widgetWithText(TextField, 'Title'),
+      );
+      final descriptionField = tester.widget<TextField>(
+        find.widgetWithText(TextField, 'Description'),
+      );
+
+      expect(titleField.controller?.text, 'Task 1');
+      expect(descriptionField.controller?.text, 'Description 1');
+    });
+
+    testWidgets('updates task when edited', (WidgetTester tester) async {
+      final task = Task(title: 'Task 1', description: 'Description 1');
+      when(mockTaskRepository.getTasks()).thenReturn([task]);
+      when(mockTaskRepository.updateTask(0, any)).thenAnswer((_) async {});
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            taskListProvider.overrideWith(
+              (ref) => TaskListNotifier(ref.read(taskRepositoryProvider)),
+            ),
+          ],
+          child: const MaterialApp(home: TaskListScreen()),
+        ),
+      );
+
+      // Navigate to edit screen
+      await tester.tap(find.text('Task 1'));
+      await tester.pumpAndSettle();
+
+      // Edit the task
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Title'),
+        'Updated Task',
+      );
+      await tester.enterText(
+        find.widgetWithText(TextField, 'Description'),
+        'Updated Description',
+      );
+
+      // Save changes
+      await tester.tap(find.text('Save Changes'));
+      await tester.pumpAndSettle();
+
+      // Verify the update was called with correct data
+      verify(mockTaskRepository.updateTask(0, any)).called(1);
+    });
+
+    testWidgets('toggles task completion status when checkbox is tapped', (
+      WidgetTester tester,
+    ) async {
+      final task = Task(title: 'Task 1', description: 'Description 1');
+      when(mockTaskRepository.getTasks()).thenReturn([task]);
+      when(mockTaskRepository.updateTask(0, any)).thenAnswer((_) async {});
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            taskRepositoryProvider.overrideWithValue(mockTaskRepository),
+            taskListProvider.overrideWith(
+              (ref) => TaskListNotifier(ref.read(taskRepositoryProvider)),
+            ),
+          ],
+          child: const MaterialApp(home: TaskListScreen()),
+        ),
+      );
+
+      // Find and tap the checkbox
+      final checkbox = find.byType(Checkbox);
+      expect(checkbox, findsOneWidget);
+
+      await tester.tap(checkbox);
+      await tester.pumpAndSettle();
+
+      // Verify the update was called with completion status changed
+      verify(
+        mockTaskRepository.updateTask(
+          0,
+          argThat(predicate<Task>((task) => task.isCompleted == true)),
+        ),
+      ).called(1);
+    });
     testWidgets('can delete task by swipe', (WidgetTester tester) async {
       when(
         mockTaskRepository.getTasks(),
