@@ -35,9 +35,7 @@ class TaskListScreen extends ConsumerWidget {
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final newTask = await Navigator.of(context).push<Task>(
-            MaterialPageRoute(
-              builder: (context) => const AddEditTaskScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const AddEditTaskScreen()),
           );
           if (newTask != null) {
             ref.read(taskListProvider.notifier).addTask(newTask);

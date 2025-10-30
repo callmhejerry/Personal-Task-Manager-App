@@ -83,13 +83,13 @@ class _AddEditTaskScreenState extends ConsumerState<AddEditTaskScreen> {
                   await ref
                       .read(addEditTaskProvider)
                       .saveTask(task, index: widget.index);
-                  if (mounted) {
+                  if (context.mounted) {
                     // Refresh the task list
-                    ref.refresh(taskListProvider);
+                    ref.invalidate(taskListProvider);
                     Navigator.pop(context);
                   }
                 } catch (e) {
-                  if (mounted) {
+                  if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Failed to save task')),
                     );
